@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openerp>
+    <data>
+        ##############################################################################
+        #
+        #    flydoc module for OpenERP, FlyDoc webservices access from OpenERP
+        #    Copyright (C) 2014 SYLEAM Info Services ([http://www.Syleam.fr/])
+        #              Sylvain Garancher [sylvain.garancher@syleam.fr]
+        #
+        #    This file is a part of flydoc
+        #
+        #    flydoc is free software: you can redistribute it and/or modify
+        #    it under the terms of the GNU Affero General Public License as published by
+        #    the Free Software Foundation, either version 3 of the License, or
+        #    (at your option) any later version.
+        #
+        #    flydoc is distributed in the hope that it will be useful,
+        #    but WITHOUT ANY WARRANTY; without even the implied warranty of
+        #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        #    GNU Affero General Public License for more details.
+        #
+        #    You should have received a copy of the GNU Affero General Public License
+        #    along with this program.  If not, see [http://www.gnu.org/licenses/].
+        #
+        ##############################################################################
+
+        <!-- Create the Tools menu, if it doesn't exist -->
+        <menuitem name="Tools" id="base.menu_tools" sequence="120" groups="base.group_tool_user"/>
+        <menuitem name="FlyDoc" id="menu_flydoc_root" sequence="100" parent="base.menu_tools"/>
+
+        <record id="view_flydoc_service_tree" model="ir.ui.view">
+            <field name="name">flydoc.service.tree</field>
+            <field name="model">flydoc.service</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <tree string="FlyDoc Services">
+                    <field name="name" colspan="2"/>
+                    <field name="username"/>
+                </tree>
+            </field>
+        </record>
+        <record id="view_flydoc_service_form" model="ir.ui.view">
+            <field name="name">flydoc.service.form</field>
+            <field name="model">flydoc.service</field>
+            <field name="type">form</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <form string="FlyDoc Services">
+                    <field name="name" colspan="2"/>
+                    <field name="username"/>
+                    <field name="password" password="1"/>
+                </form>
+            </field>
+        </record>
+        <record id="view_flydoc_service_search" model="ir.ui.view">
+            <field name="name">flydoc.service.search</field>
+            <field name="model">flydoc.service</field>
+            <field name="type">search</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <search string="FlyDoc Services">
+                    <field name="name"/>
+                    <field name="username"/>
+                </search>
+            </field>
+        </record>
+        <record model="ir.actions.act_window" id="act_open_flydoc_service_view">
+            <field name="name">FlyDoc Services</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">flydoc.service</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_flydoc_service_search"/>
+            <field name="domain">[]</field>
+            <field name="context">{}</field>
+        </record>
+        <record model="ir.actions.act_window.view" id="act_open_flydoc_service_view_form">
+            <field name="act_window_id" ref="act_open_flydoc_service_view"/>
+            <field name="sequence" eval="20"/>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_flydoc_service_form"/>
+        </record>
+        <record model="ir.actions.act_window.view" id="act_open_flydoc_service_view_tree">
+            <field name="act_window_id" ref="act_open_flydoc_service_view"/>
+            <field name="sequence" eval="10"/>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_flydoc_service_tree"/>
+        </record>
+        <menuitem id="menu_flydoc_service" parent="menu_flydoc_root" sequence="20" action="act_open_flydoc_service_view"/>
+
+        <record id="view_flydoc_transport_tree" model="ir.ui.view">
+            <field name="name">flydoc.transport.tree</field>
+            <field name="model">flydoc.transport</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <tree string="FlyDoc transports">
+                    <field name="name"/>
+                    <field name="transportid"/>
+                    <field name="var_ids"/>
+                    <field name="attachment_ids"/>
+                </tree>
+            </field>
+        </record>
+        <record id="view_flydoc_transport_form" model="ir.ui.view">
+            <field name="name">flydoc.transport.form</field>
+            <field name="model">flydoc.transport</field>
+            <field name="type">form</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <form string="FlyDoc transports">
+                    <field name="service_ids"/>
+                    <field name="name"/>
+                    <field name="transportid"/>
+                    <field name="var_ids"/>
+                    <field name="attachment_ids"/>
+                </form>
+            </field>
+        </record>
+        <record id="view_flydoc_transport_search" model="ir.ui.view">
+            <field name="name">flydoc.transport.search</field>
+            <field name="model">flydoc.transport</field>
+            <field name="type">search</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <search string="FlyDoc transports">
+                    <field name="service_ids"/>
+                    <field name="name"/>
+                    <field name="transportid"/>
+                </search>
+            </field>
+        </record>
+        <record model="ir.actions.act_window" id="act_open_flydoc_transport_view">
+            <field name="name">FlyDoc transports</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">flydoc.transport</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_flydoc_transport_search"/>
+            <field name="domain">[]</field>
+            <field name="context">{}</field>
+        </record>
+        <record model="ir.actions.act_window.view" id="act_open_flydoc_transport_view_form">
+            <field name="act_window_id" ref="act_open_flydoc_transport_view"/>
+            <field name="sequence" eval="20"/>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_flydoc_transport_form"/>
+        </record>
+        <record model="ir.actions.act_window.view" id="act_open_flydoc_transport_view_tree">
+            <field name="act_window_id" ref="act_open_flydoc_transport_view"/>
+            <field name="sequence" eval="10"/>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_flydoc_transport_tree"/>
+        </record>
+        <menuitem id="menu_flydoc_transport" parent="menu_flydoc_root" sequence="20" action="act_open_flydoc_transport_view"/>
+    </data>
+</openerp>
