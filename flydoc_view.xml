@@ -37,6 +37,7 @@
                 <tree string="FlyDoc Services">
                     <field name="name" colspan="2"/>
                     <field name="username"/>
+                    <field name="state"/>
                 </tree>
             </field>
         </record>
@@ -49,6 +50,7 @@
                 <form string="FlyDoc Services" version="7.0">
                     <header>
                         <button name="check_connection" type="object" states="unverified" string="Check connection" class="oe_highlight"/>
+                        <button name="update_transports" type="object" states="verified" string="Update transports"/>
                         <field name="state" widget="statusbar" statusbar_visible="unverified,verified"/>
                     </header>
                     <group>
@@ -68,6 +70,7 @@
                 <search string="FlyDoc Services">
                     <field name="name"/>
                     <field name="username"/>
+                    <field name="state"/>
                 </search>
             </field>
         </record>
@@ -106,6 +109,7 @@
                     <field name="transportid"/>
                     <field name="var_ids"/>
                     <field name="attachment_ids"/>
+                    <field name="state"/>
                 </tree>
             </field>
         </record>
@@ -115,12 +119,25 @@
             <field name="type">form</field>
             <field name="priority" eval="8"/>
             <field name="arch" type="xml">
-                <form string="FlyDoc transports">
-                    <field name="service_ids"/>
-                    <field name="name"/>
-                    <field name="transportid"/>
-                    <field name="var_ids"/>
-                    <field name="attachment_ids"/>
+                <form string="FlyDoc transports" version="7.0">
+                    <header>
+                        <field name="state" widget="statusbar" statusbar_visible="0,30,50,90,100" statusbar_colors='{"200":"red","300":"red","400":"red"}'/>
+                    </header>
+                    <group colspan="4">
+                        <field name="name"/>
+                        <field name="transportid"/>
+                    </group>
+                    <notebook colspan="4">
+                        <page string="Services">
+                            <field name="service_ids" nolabel="1"/>
+                        </page>
+                        <page string="Vars">
+                            <field name="var_ids" nolabel="1"/>
+                        </page>
+                        <page string="Attachments">
+                            <field name="attachment_ids" nolabel="1"/>
+                        </page>
+                    </notebook>
                 </form>
             </field>
         </record>
@@ -134,6 +151,7 @@
                     <field name="service_ids"/>
                     <field name="name"/>
                     <field name="transportid"/>
+                    <field name="state"/>
                 </search>
             </field>
         </record>
