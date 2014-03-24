@@ -24,7 +24,7 @@
 
 from openerp.osv import orm
 from openerp.osv import fields
-from flydoc import FlyDocSubmissionService
+from pyflydoc import FlyDocSubmissionService
 
 
 class FlyDocService(orm.Model):

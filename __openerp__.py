@@ -39,7 +39,7 @@
     ],
     'demo_xml': [],
     'test': [],
-    'external_dependancies': {'python': ['flydoc']},
+    'external_dependancies': {'python': ['pyflydoc']},
     'installable': True,
     'active': False,
     'license': 'AGPL-3',
