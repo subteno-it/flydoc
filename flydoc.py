@@ -22,9 +22,13 @@
 #
 ##############################################################################
 
+import os
+import base64
+from openerp.osv import osv
 from openerp.osv import orm
 from openerp.osv import fields
 from pyflydoc import FlyDoc, FlyDocTransportName, FlyDocTransportState, FlyDocSubmissionService
+from tools.translate import _
 import logging
 logger = logging.getLogger('flydoc')
 
@@ -74,6 +78,88 @@ class FlyDocService(orm.Model):
             verified_ids.append(service.id)
 
         return self.write(cr, uid, verified_ids, {'state': 'verified'}, context=context)
+
+    def submit(self, cr, uid, ids, transportName, recipient_id, custom_vars=None, data=None, context=None):
+        """
+        Submits a new transport to the FlyDoc webservice
+        @param data : List of dicts containing the data to be sent :
+            - {'type': 'path', 'path': '/path/to/file'}
+            - {'type': 'data', 'filename': 'name_of_the_file', 'data': 'some data'}
+            - {'type': 'ir.attachment', 'attachment_id': id_of_an_ir_attachment}
+        """
+        # Submit each transport only one time
+        assert len(ids) == 1, 'A transport must be submitted to a single service only'
+        service = self.browse(cr, uid, ids[0], context=context)
+
+        partner_obj = self.pool.get('res.partner')
+        recipient = partner_obj.browse(cr, uid, recipient_id, context=context)
+
+        recipient_name = recipient.name
+        if not recipient.is_company and recipient.title:
+            recipient_name = '%s %s' % (recipient.title.shortcut, recipient.name)
+
+        transportVars = {
+            'ToBlockAddress': '%s\n%s\n%s\n%s %s\n%s' % (
+                recipient_name or '',
+                recipient.street or '',
+                recipient.street2 or '',
+                recipient.zip or '', recipient.city or '',
+                recipient.country_id.name or '',
+            ),
+        }
+
+        # Add custom vars
+        if custom_vars is not None:
+            transportVars.update(custom_vars)
+
+        # Set some specific vars
+        if service.need_validation:
+            transportVars['NeedValidation'] = '1'
+
+        attachment_obj = self.pool.get('ir.attachment')
+        attachment_ids = []
+        for contents in data:
+            # If an ir.attachment id was suplied, simply add this in the data to send
+            if contents['type'] == 'ir.attachment':
+                attachment_ids.append(contents['attachment_id'])
+                continue
+
+            filename = None
+            datas = None
+
+            # Retrieve data to create a new ir.attachment, if needed
+            if contents['type'] == 'path':
+                filename = os.path.basename(contents['path'])
+                with open(contents['path']) as fil:
+                    datas = base64.b64encode(fil.read())
+            elif contents['type'] == 'data':
+                filename = contents['filename']
+                datas = base64.b64encode(contents['data'])
+            else:
+                raise osv.except_osv(_('Error'), _('Unknown data source !'))
+
+            # Create the new ir.attachment if datas were supplied
+            if datas is not None:
+                attachment_data = {
+                    'name': filename,
+                    'datas_fname': filename,
+                    'datas': datas,
+                    'type': 'binary',
+                }
+                attachment_ids.append(attachment_obj.create(cr, uid, attachment_data, context=context))
+
+        # Add each listed ir.attachment as transport attachments
+        transportContents = []
+        for attachment in attachment_obj.browse(cr, uid, attachment_ids, context=context):
+            transportContents.append({'name': attachment.datas_fname, 'data': base64.b64decode(attachment.datas)})
+
+        # Connect to the FlyDoc service
+        connection = FlyDoc()
+        connection.login(service.username, service.password)
+        # Submit the transport to FlyDoc service
+        connection.submit(transportName, transportVars, transportContents=transportContents)
+        # Close the FlyDoc connection
+        connection.logout()
 
     def update_transports(self, cr, uid, ids, context=None):
         """
