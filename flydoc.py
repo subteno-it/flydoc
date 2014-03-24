@@ -24,7 +24,7 @@
 
 from openerp.osv import orm
 from openerp.osv import fields
-from pyflydoc import FlyDoc, FlyDocSubmissionService
+from pyflydoc import FlyDoc, FlyDocTransportState, FlyDocSubmissionService
 import logging
 logger = logging.getLogger('flydoc')
 
@@ -43,6 +43,10 @@ class FlyDocService(orm.Model):
     _defaults = {
         'state': 'unverified',
     }
+
+    _sql_constraints = [
+        ('username_unique', 'UNIQUE (username)', 'The username of the FlyDoc service must be unique !'),
+    ]
 
     def write(self, cr, uid, ids, values, context=None):
         """
@@ -74,20 +78,28 @@ class FlyDocTransport(orm.Model):
     _name = 'flydoc.transport'
     _description = 'FlyDoc Transport'
 
+    def _getTransportStates(self, cr, uid, context=None):
+        return [(str(state.value), state.name) for state in FlyDocTransportState]
+
     _columns = {
-        'service_ids': fields.many2many('flydoc.service', 'Services', help='Services from which this transport is available'),
-        'transportid': fields.integer('Transport ID', help='Identifier of this transport at FlyDoc'),
-        'name': fields.char('Transport Name', size=64, required=True, help='Name of the transport'),
-        'var_ids': fields.one2many('flydoc.transport.var', 'transport_id', 'Vars', help='Vars of this transport'),
-        'attachment_ids': fields.one2many('flydoc.transport.attachment', 'transport_id', 'Attachments', help='Attachments of this transport'),
+        'service_ids': fields.many2many('flydoc.service', string='Services', readonly=True, help='Services from which this transport is available'),
+        'transportid': fields.integer('Transport ID', readonly=True, help='Identifier of this transport at FlyDoc'),
+        'state': fields.selection(_getTransportStates, 'State', readonly=True, help='State of this transport'),
+        'name': fields.char('Transport Name', size=64, required=True, readonly=True, help='Name of the transport'),
+        'var_ids': fields.one2many('flydoc.transport.var', 'transport_id', 'Vars', readonly=True, help='Vars of this transport'),
+        'attachment_ids': fields.one2many('flydoc.transport.attachment', 'transport_id', 'Attachments', readonly=True, help='Attachments of this transport'),
     }
+
+    _sql_constraints = [
+        ('transportid_unique', 'UNIQUE (transportid)', 'The transportID of the FlyDoc transport must be unique !'),
+    ]
 
 
 class FlyDocTransportVar(orm.Model):
     _name = 'flydoc.transport.var'
     _description = 'FlyDoc Transport Var'
 
-    def _getTransportVarTypes(self):
+    def _getTransportVarTypes(self, cr, uid, context=None):
         return [(typeCode, typeName) for typeName, typeCode in FlyDocSubmissionService().VAR_TYPE]
 
     _columns = {
@@ -104,6 +116,8 @@ class FlyDocTransportAttachment(orm.Model):
 
     _columns = {
         'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, help='Transport of this attachment'),
+        'filename': fields.char('Filename', size=64, required=True, help='Name of the attached file'),
+        'data': fields.binary('Data', required=True, help='Contents of the attached file'),
     }
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
