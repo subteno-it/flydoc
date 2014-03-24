@@ -24,7 +24,7 @@
 
 from openerp.osv import orm
 from openerp.osv import fields
-from pyflydoc import FlyDoc, FlyDocTransportState, FlyDocSubmissionService
+from pyflydoc import FlyDoc, FlyDocTransportName, FlyDocTransportState, FlyDocSubmissionService
 import logging
 logger = logging.getLogger('flydoc')
 
@@ -127,14 +127,17 @@ class FlyDocTransport(orm.Model):
     _name = 'flydoc.transport'
     _description = 'FlyDoc Transport'
 
+    def _getTransportNames(self, cr, uid, context=None):
+        return [(name.name, name.value) for name in FlyDocTransportName]
+
     def _getTransportStates(self, cr, uid, context=None):
         return [(str(state.value), state.name) for state in FlyDocTransportState]
 
     _columns = {
         'service_ids': fields.many2many('flydoc.service', string='Services', readonly=True, help='Services from which this transport is available'),
-        'transportid': fields.integer('Transport ID', readonly=True, help='Identifier of this transport at FlyDoc'),
+        'transportid': fields.integer('Transport ID', required=True, readonly=True, help='Identifier of this transport at FlyDoc'),
         'state': fields.selection(_getTransportStates, 'State', readonly=True, help='State of this transport'),
-        'name': fields.char('Transport Name', size=64, required=True, readonly=True, help='Name of the transport'),
+        'name': fields.selection(_getTransportNames, 'Transport Name', readonly=True, help='Name of the transport'),
         'var_ids': fields.one2many('flydoc.transport.var', 'transport_id', 'Vars', readonly=True, help='Vars of this transport'),
         'attachment_ids': fields.one2many('flydoc.transport.attachment', 'transport_id', 'Attachments', readonly=True, help='Attachments of this transport'),
     }
