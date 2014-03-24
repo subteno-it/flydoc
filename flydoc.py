@@ -37,11 +37,13 @@ class FlyDocService(orm.Model):
         'name': fields.char('Name', size=64, required=True, help='Name of the FlyDoc service'),
         'username': fields.char('Username', size=64, required=True, help='Username for login'),
         'password': fields.char('Password', size=64, required=True, help='Password of the user'),
+        'need_validation': fields.boolean('Need Validation', help='If checked, the sent transports will wait for a manual validation before being processed'),
         'state': fields.selection([('unverified', 'Unverified'), ('verified', 'Verified')], 'State', required=True, help='Set to unverified until the connection has been successfully established with the Verify button'),
     }
 
     _defaults = {
         'state': 'unverified',
+        'need_validation': '1',
     }
 
     _sql_constraints = [

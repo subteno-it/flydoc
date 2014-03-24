@@ -57,6 +57,7 @@
                         <field name="name" colspan="2"/>
                         <field name="username"/>
                         <field name="password" password="1"/>
+                        <field name="need_validation"/>
                     </group>
                 </form>
             </field>
