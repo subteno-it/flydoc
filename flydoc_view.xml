@@ -178,5 +178,30 @@
             <field name="view_id" ref="view_flydoc_transport_tree"/>
         </record>
         <menuitem id="menu_flydoc_transport" parent="menu_flydoc_root" sequence="20" action="act_open_flydoc_transport_view"/>
+
+        <record id="view_flydoc_transport_var_tree" model="ir.ui.view">
+            <field name="name">flydoc.transport.var.tree</field>
+            <field name="model">flydoc.transport.var</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <tree string="Transport Var">
+                    <field name="name"/>
+                    <field name="value"/>
+                    <field name="type"/>
+                </tree>
+            </field>
+        </record>
+        <record id="view_flydoc_transport_var_form" model="ir.ui.view">
+            <field name="name">flydoc.transport.var.form</field>
+            <field name="model">flydoc.transport.var</field>
+            <field name="priority" eval="8"/>
+            <field name="arch" type="xml">
+                <form string="Transport Var">
+                    <field name="name"/>
+                    <field name="value"/>
+                    <field name="type"/>
+                </form>
+            </field>
+        </record>
     </data>
 </openerp>
