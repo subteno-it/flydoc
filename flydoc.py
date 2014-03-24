@@ -73,6 +73,55 @@ class FlyDocService(orm.Model):
 
         return self.write(cr, uid, verified_ids, {'state': 'verified'}, context=context)
 
+    def update_transports(self, cr, uid, ids, context=None):
+        """
+        Updates the transports list from the FlyDoc webservice
+        """
+        transport_obj = self.pool.get('flydoc.transport')
+        transport_var_obj = self.pool.get('flydoc.transport.var')
+
+        updated_transportids = []
+        for service in self.browse(cr, uid, ids, context=context):
+            transport_ids = transport_obj.search(cr, uid, [('service_ids', 'in', ids), ('transportid', 'not in', updated_transportids), ('state', 'not in', (
+                str(FlyDocTransportState.Successful.value),
+                str(FlyDocTransportState.Failure.value),
+                str(FlyDocTransportState.Canceled.value),
+                str(FlyDocTransportState.Rejected.value),
+            ))], context=context)
+
+            # Open a connection to the FlyDoc webservices
+            connection = FlyDoc()
+            connection.login(service.username, service.password)
+
+            # Update all found transports
+            for transport in transport_obj.browse(cr, uid, transport_ids, context=context):
+                flydocTransport = connection.browse(filter='msn=%d' % transport.transportid).next()
+                updated_transportids.append(transport.transportid)
+
+                # Update the transport values
+                transport.write({'name': flydocTransport.transportName, 'state': flydocTransport.state}, context=context)
+
+                # Update the transport vars
+                for transport_var in flydocTransport.vars.Var:
+                    var_values = {
+                        'transport_id': transport.id,
+                        'name': transport_var.attribute,
+                        'value': transport_var.simpleValue,
+                        'type': transport_var.type
+                    }
+
+                    # Update each var of this transport
+                    transport_var_ids = transport_var_obj.search(cr, uid, [('transport_id', '=', transport.id), ('name', '=', transport_var.attribute)], context=context)
+                    if not transport_var_ids:
+                        transport_var_obj.create(cr, uid, var_values, context=context)
+                    else:
+                        transport_var_obj.write(cr, uid, transport_var_ids, var_values, context=context)
+
+            # Close the connection
+            connection.logout()
+
+        return True
+
 
 class FlyDocTransport(orm.Model):
     _name = 'flydoc.transport'
