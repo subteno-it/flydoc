@@ -24,7 +24,9 @@
 
 from openerp.osv import orm
 from openerp.osv import fields
-from pyflydoc import FlyDocSubmissionService
+from pyflydoc import FlyDoc, FlyDocSubmissionService
+import logging
+logger = logging.getLogger('flydoc')
 
 
 class FlyDocService(orm.Model):
@@ -35,7 +37,37 @@ class FlyDocService(orm.Model):
         'name': fields.char('Name', size=64, required=True, help='Name of the FlyDoc service'),
         'username': fields.char('Username', size=64, required=True, help='Username for login'),
         'password': fields.char('Password', size=64, required=True, help='Password of the user'),
+        'state': fields.selection([('unverified', 'Unverified'), ('verified', 'Verified')], 'State', required=True, help='Set to unverified until the connection has been successfully established with the Verify button'),
     }
+
+    _defaults = {
+        'state': 'unverified',
+    }
+
+    def write(self, cr, uid, ids, values, context=None):
+        """
+        Set the state to unverified if we change username and/or password
+        """
+        if 'username' in values or 'password' in values:
+            values['state'] = 'unverified'
+
+        return super(FlyDocService, self).write(cr, uid, ids, values, context=context)
+
+    def check_connection(self, cr, uid, ids, context=None):
+        """
+        Check if the information are valid
+        """
+        verified_ids = []
+        for service in self.browse(cr, uid, ids, context=context):
+            try:
+                FlyDoc().login(service.username, service.password)
+            except Exception, e:
+                logger.warning('Connection failed for FlyDoc service %s (%d) : %s' % (service.name, service.id, e.message))
+                continue
+
+            verified_ids.append(service.id)
+
+        return self.write(cr, uid, verified_ids, {'state': 'verified'}, context=context)
 
 
 class FlyDocTransport(orm.Model):

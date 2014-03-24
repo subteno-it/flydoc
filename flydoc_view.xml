@@ -46,10 +46,16 @@
             <field name="type">form</field>
             <field name="priority" eval="8"/>
             <field name="arch" type="xml">
-                <form string="FlyDoc Services">
-                    <field name="name" colspan="2"/>
-                    <field name="username"/>
-                    <field name="password" password="1"/>
+                <form string="FlyDoc Services" version="7.0">
+                    <header>
+                        <button name="check_connection" type="object" states="unverified" string="Check connection" class="oe_highlight"/>
+                        <field name="state" widget="statusbar" statusbar_visible="unverified,verified"/>
+                    </header>
+                    <group>
+                        <field name="name" colspan="2"/>
+                        <field name="username"/>
+                        <field name="password" password="1"/>
+                    </group>
                 </form>
             </field>
         </record>
