@@ -187,7 +187,7 @@ class FlyDocService(orm.Model):
                 updated_transportids.append(transport.transportid)
 
                 # Update the transport values
-                transport.write({'name': flydocTransport.transportName, 'state': flydocTransport.state}, context=context)
+                transport.write({'name': flydocTransport.transportName, 'state': str(flydocTransport.state)}, context=context)
 
                 # Update the transport vars
                 for transport_var in flydocTransport.vars.Var:
