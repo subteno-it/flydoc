@@ -79,7 +79,7 @@ class FlyDocService(orm.Model):
 
         return self.write(cr, uid, verified_ids, {'state': 'verified'}, context=context)
 
-    def submit(self, cr, uid, ids, transportName, recipient_id, custom_vars=None, data=None, context=None):
+    def submit(self, cr, uid, ids, transportName, recipient_id, custom_vars=None, data=None, update_transport=True, context=None):
         """
         Submits a new transport to the FlyDoc webservice
         @param data : List of dicts containing the data to be sent :
@@ -92,11 +92,21 @@ class FlyDocService(orm.Model):
         service = self.browse(cr, uid, ids[0], context=context)
 
         partner_obj = self.pool.get('res.partner')
+        transport_obj = self.pool.get('flydoc.transport')
         recipient = partner_obj.browse(cr, uid, recipient_id, context=context)
 
         recipient_name = recipient.name
-        if not recipient.is_company and recipient.title:
-            recipient_name = '%s %s' % (recipient.title.shortcut, recipient.name)
+        if not recipient.is_company:
+            # Add the title
+            if recipient.title:
+                recipient_name = '%s %s' % (recipient.title.shortcut, recipient.name)
+            # Add the company name
+            if recipient.parent_id:
+                recipient_name = '%s\n%s' % (recipient.parent_id.name, recipient_name)
+
+        # No address defined, put the company's address
+        if not recipient.street:
+            recipient = recipient.parent_id
 
         transportVars = {
             'ToBlockAddress': '%s\n%s\n%s\n%s %s\n%s' % (
@@ -157,7 +167,11 @@ class FlyDocService(orm.Model):
         connection = FlyDoc()
         connection.login(service.username, service.password)
         # Submit the transport to FlyDoc service
-        connection.submit(transportName, transportVars, transportContents=transportContents)
+        submitInfo = connection.submit(transportName, transportVars, transportContents=transportContents)
+        transport_obj.create(cr, uid, {'transportid': submitInfo.transportID, 'service_ids': [(4, service.id)]}, context=context)
+        # Add argument to select update or not
+        if update_transport:
+            service.update_transports()
         # Close the FlyDoc connection
         connection.logout()
 
