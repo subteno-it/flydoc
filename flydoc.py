@@ -105,7 +105,7 @@ class FlyDocService(orm.Model):
                 recipient_name = '%s\n%s' % (recipient.parent_id.name, recipient_name)
 
         # No address defined, put the company's address
-        if not recipient.street:
+        if not recipient.street or not recipient.zip or not recipient.city :
             recipient = recipient.parent_id
 
         transportVars = {

@@ -1,1 +1,5 @@
 "id","name","model_id:id","group_id:id","perm_read","perm_write","perm_create","perm_unlink"
+"flydoc_services","FlyDoc services","flydoc.model_flydoc_service","base.group_tool_user",1,1,1,1
+"flydoc_transports","FlyDoc transports","flydoc.model_flydoc_transport","base.group_tool_user",1,1,1,1
+"flydoc_transport_attachmentss","FlyDoc transport attachments","flydoc.model_flydoc_transport_attachment","base.group_tool_user",1,1,1,1
+"flydoc_transport_vars","FlyDoc transport variables","flydoc.model_flydoc_transport_var","base.group_tool_user",1,1,1,1
