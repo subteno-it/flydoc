@@ -33,8 +33,8 @@
     'init_xml': [],
     'images': [],
     'update_xml': [
-        'security/ir.model.access.csv',
         'security/groups.xml',
+        'security/ir.model.access.csv',
         'flydoc_view.xml',
     ],
     'demo_xml': [],
