@@ -168,14 +168,16 @@ class FlyDocService(orm.Model):
         connection.login(service.username, service.password)
         # Submit the transport to FlyDoc service
         submitInfo = connection.submit(transportName, transportVars, transportContents=transportContents)
-        transport_obj.create(cr, uid, {'transportid': submitInfo.transportID, 'service_ids': [(4, service.id)]}, context=context)
+        transport_id = transport_obj.create(cr, uid, {'transportid': submitInfo.transportID, 'service_ids': [(4, service.id)]}, context=context)
         # Add argument to select update or not
         if update_transport:
-            service.update_transports()
+            service.update_transports(trans_ids=[transport_id])
         # Close the FlyDoc connection
         connection.logout()
 
-    def update_transports(self, cr, uid, ids, context=None):
+        return(transport_id)
+
+    def update_transports(self, cr, uid, ids, context=None, trans_ids=None):
         """
         Updates the transports list from the FlyDoc webservice
         """
@@ -184,12 +186,19 @@ class FlyDocService(orm.Model):
 
         updated_transportids = []
         for service in self.browse(cr, uid, ids, context=context):
-            transport_ids = transport_obj.search(cr, uid, [('service_ids', 'in', ids), ('transportid', 'not in', updated_transportids), ('state', 'not in', (
-                str(FlyDocTransportState.Successful.value),
-                str(FlyDocTransportState.Failure.value),
-                str(FlyDocTransportState.Canceled.value),
-                str(FlyDocTransportState.Rejected.value),
-            ))], context=context)
+            domain = [
+                ('service_ids', '=', service.id),
+                ('transportid', 'not in', updated_transportids),
+                ('state', 'not in', (
+                    str(FlyDocTransportState.Successful.value),
+                    str(FlyDocTransportState.Failure.value),
+                    str(FlyDocTransportState.Canceled.value),
+                    str(FlyDocTransportState.Rejected.value),
+                ))
+            ]
+            if trans_ids:
+                domain.append(('id', 'in', trans_ids))
+            transport_ids = transport_obj.search(cr, uid, domain, context=context)
 
             # Open a connection to the FlyDoc webservices
             connection = FlyDoc()
