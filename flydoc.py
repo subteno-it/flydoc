@@ -126,6 +126,9 @@ class FlyDocService(orm.Model):
         if service.need_validation:
             transportVars['NeedValidation'] = '1'
 
+        # Set ApplicationName to OpenERP
+        transportVars['ApplicationName'] = 'Odoo 7.0'
+
         attachment_obj = self.pool.get('ir.attachment')
         attachment_ids = []
         for contents in data:
