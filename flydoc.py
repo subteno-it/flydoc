@@ -176,7 +176,10 @@ class FlyDocService(orm.Model):
         if update_transport:
             service.update_transports(trans_ids=[transport_id])
         # Close the FlyDoc connection
-        connection.logout()
+        try:
+            connection.logout()
+        except:
+            pass
 
         return(transport_id)
 
@@ -237,7 +240,10 @@ class FlyDocService(orm.Model):
                         transport_var_obj.write(cr, uid, transport_var_ids, var_values, context=context)
 
             # Close the connection
-            connection.logout()
+            try:
+                connection.logout()
+            except:
+                pass
 
         return True
 
