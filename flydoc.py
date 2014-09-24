@@ -206,8 +206,13 @@ class FlyDocService(orm.Model):
 
             # Update all found transports
             for transport in transport_obj.browse(cr, uid, transport_ids, context=context):
-                flydocTransport = connection.browse(filter='msn=%d' % transport.transportid).next()
                 updated_transportids.append(transport.transportid)
+                try:
+                    flydocTransport = connection.browse(filter='msn=%d' % transport.transportid).next()
+                except StopIteration:
+                    # Transport has been deleted
+                    transport.unlink(context=context)
+                    continue
 
                 # Update the transport values
                 transport.write({'name': flydocTransport.transportName, 'state': str(flydocTransport.state)}, context=context)
