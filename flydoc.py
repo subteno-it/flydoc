@@ -266,7 +266,7 @@ class FlyDocTransportVar(orm.Model):
         return [(typeCode, typeName) for typeName, typeCode in FlyDocSubmissionService().VAR_TYPE]
 
     _columns = {
-        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, help='Transport of this var'),
+        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, ondelete='cascade', help='Transport of this var'),
         'name': fields.char('Name', size=64, required=True, help='Name of the var'),
         'value': fields.char('Value', size=64, help='Value of the var'),
         'type': fields.selection(_getTransportVarTypes, 'Type', help='Type of the var'),
@@ -278,7 +278,7 @@ class FlyDocTransportAttachment(orm.Model):
     _description = 'FlyDoc Transport Attachment'
 
     _columns = {
-        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, help='Transport of this attachment'),
+        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, ondelete='cascade', help='Transport of this attachment'),
         'filename': fields.char('Filename', size=64, required=True, help='Name of the attached file'),
         'data': fields.binary('Data', required=True, help='Contents of the attached file'),
     }
