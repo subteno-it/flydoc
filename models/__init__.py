@@ -22,23 +22,6 @@
 #
 ##############################################################################
 
-{
-    'name': 'Flydoc',
-    'version': '1.0',
-    'category': 'Custom',
-    'description': """FlyDoc webservices access from OpenERP""",
-    'author': 'SYLEAM',
-    'website': 'http://www.syleam.fr/',
-    'depends': ['base'],
-    'data': [
-        'security/groups.xml',
-        'security/ir.model.access.csv',
-        'views/flydoc.xml',
-    ],
-    'external_dependancies': {'python': ['pyflydoc']},
-    'installable': True,
-    'active': False,
-    'license': 'AGPL-3',
-}
+import flydoc
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

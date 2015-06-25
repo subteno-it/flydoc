@@ -24,51 +24,47 @@
 
 import os
 import base64
-from openerp.osv import osv
-from openerp.osv import orm
-from openerp.osv import fields
+from openerp import models, api, fields, exceptions
 from pyflydoc import FlyDoc, FlyDocTransportName, FlyDocTransportState, FlyDocSubmissionService
-from tools.translate import _
+from openerp.tools.translate import _
 import logging
 logger = logging.getLogger('flydoc')
 
 
-class FlyDocService(orm.Model):
+class FlyDocService(models.Model):
     _name = 'flydoc.service'
     _description = 'FlyDoc Service'
 
-    _columns = {
-        'name': fields.char('Name', size=64, required=True, help='Name of the FlyDoc service'),
-        'username': fields.char('Username', size=64, required=True, help='Username for login'),
-        'password': fields.char('Password', size=64, required=True, help='Password of the user'),
-        'need_validation': fields.boolean('Need Validation', help='If checked, the sent transports will wait for a manual validation before being processed'),
-        'state': fields.selection([('unverified', 'Unverified'), ('verified', 'Verified')], 'State', required=True, help='Set to unverified until the connection has been successfully established with the Verify button'),
-    }
-
-    _defaults = {
-        'state': 'unverified',
-        'need_validation': '1',
-    }
+    name = fields.Char(string='Name', size=64, required=True, help='Name of the FlyDoc service')
+    username = fields.Char(string='Username', size=64, required=True, help='Username for login')
+    password = fields.Char(string='Password', size=64, required=True, help='Password of the user')
+    need_validation = fields.Boolean(string='Need Validation', default=True, help='If checked, the sent transports will wait for a manual validation before being processed')
+    state = fields.Selection(selection=[
+        ('unverified', 'Unverified'),
+        ('verified', 'Verified'),
+    ], string='State', required=True, default='unverified', help='Set to unverified until the connection has been successfully established with the Verify button')
 
     _sql_constraints = [
         ('username_unique', 'UNIQUE (username)', 'The username of the FlyDoc service must be unique !'),
     ]
 
-    def write(self, cr, uid, ids, values, context=None):
+    @api.multi
+    def write(self, values):
         """
         Set the state to unverified if we change username and/or password
         """
         if 'username' in values or 'password' in values:
             values['state'] = 'unverified'
 
-        return super(FlyDocService, self).write(cr, uid, ids, values, context=context)
+        return super(FlyDocService, self).write(values)
 
-    def check_connection(self, cr, uid, ids, context=None):
+    @api.multi
+    def check_connection(self):
         """
         Check if the information are valid
         """
         verified_ids = []
-        for service in self.browse(cr, uid, ids, context=context):
+        for service in self:
             try:
                 FlyDoc().login(service.username, service.password)
             except Exception, e:
@@ -77,9 +73,10 @@ class FlyDocService(orm.Model):
 
             verified_ids.append(service.id)
 
-        return self.write(cr, uid, verified_ids, {'state': 'verified'}, context=context)
+        return self.browse(verified_ids).write({'state': 'verified'})
 
-    def submit(self, cr, uid, ids, transportName, recipient_id, custom_vars=None, data=None, update_transport=True, context=None):
+    @api.multi
+    def submit(self, transportName, recipient_id, custom_vars=None, data=None, update_transport=True):
         """
         Submits a new transport to the FlyDoc webservice
         @param data : List of dicts containing the data to be sent :
@@ -88,12 +85,11 @@ class FlyDocService(orm.Model):
             - {'type': 'ir.attachment', 'attachment_id': id_of_an_ir_attachment}
         """
         # Submit each transport only one time
-        assert len(ids) == 1, 'A transport must be submitted to a single service only'
-        service = self.browse(cr, uid, ids[0], context=context)
+        self.ensure_one()
 
-        partner_obj = self.pool.get('res.partner')
-        transport_obj = self.pool.get('flydoc.transport')
-        recipient = partner_obj.browse(cr, uid, recipient_id, context=context)
+        partner_obj = self.env['res.partner']
+        transport_obj = self.env['flydoc.transport']
+        recipient = partner_obj.browse(recipient_id)
 
         recipient_name = recipient.name
         if not recipient.is_company:
@@ -105,7 +101,7 @@ class FlyDocService(orm.Model):
                 recipient_name = '%s\n%s' % (recipient.parent_id.name, recipient_name)
 
         # No address defined, put the company's address
-        if not recipient.street or not recipient.zip or not recipient.city :
+        if not recipient.street or not recipient.zip or not recipient.city:
             recipient = recipient.parent_id
 
         transportVars = {
@@ -123,13 +119,13 @@ class FlyDocService(orm.Model):
             transportVars.update(custom_vars)
 
         # Set some specific vars
-        if service.need_validation:
+        if self.need_validation:
             transportVars['NeedValidation'] = '1'
 
         # Set ApplicationName to OpenERP
         transportVars['ApplicationName'] = 'Odoo 7.0'
 
-        attachment_obj = self.pool.get('ir.attachment')
+        attachment_obj = self.env['ir.attachment']
         attachment_ids = []
         for contents in data:
             # If an ir.attachment id was suplied, simply add this in the data to send
@@ -149,7 +145,7 @@ class FlyDocService(orm.Model):
                 filename = contents['filename']
                 datas = base64.b64encode(contents['data'])
             else:
-                raise osv.except_osv(_('Error'), _('Unknown data source !'))
+                raise exceptions.Warning(_('Unknown data source !'))
 
             # Create the new ir.attachment if datas were supplied
             if datas is not None:
@@ -159,22 +155,22 @@ class FlyDocService(orm.Model):
                     'datas': datas,
                     'type': 'binary',
                 }
-                attachment_ids.append(attachment_obj.create(cr, uid, attachment_data, context=context))
+                attachment_ids.append(attachment_obj.create(attachment_data))
 
         # Add each listed ir.attachment as transport attachments
         transportContents = []
-        for attachment in attachment_obj.browse(cr, uid, attachment_ids, context=context):
+        for attachment in attachment_obj.browse(attachment_ids):
             transportContents.append({'name': attachment.datas_fname, 'data': base64.b64decode(attachment.datas)})
 
         # Connect to the FlyDoc service
         connection = FlyDoc()
-        connection.login(service.username, service.password)
+        connection.login(self.username, self.password)
         # Submit the transport to FlyDoc service
         submitInfo = connection.submit(transportName, transportVars, transportContents=transportContents)
-        transport_id = transport_obj.create(cr, uid, {'transportid': submitInfo.transportID, 'service_ids': [(4, service.id)]}, context=context)
+        transport_id = transport_obj.create({'transportid': submitInfo.transportID, 'service_ids': [(4, self.id)]})
         # Add argument to select update or not
         if update_transport:
-            service.update_transports(trans_ids=[transport_id])
+            self.update_transports(trans_ids=[transport_id])
         # Close the FlyDoc connection
         try:
             connection.logout()
@@ -183,15 +179,16 @@ class FlyDocService(orm.Model):
 
         return(transport_id)
 
-    def update_transports(self, cr, uid, ids, context=None, trans_ids=None):
+    @api.multi
+    def update_transports(self, trans_ids=None):
         """
         Updates the transports list from the FlyDoc webservice
         """
-        transport_obj = self.pool.get('flydoc.transport')
-        transport_var_obj = self.pool.get('flydoc.transport.var')
+        transport_obj = self.env['flydoc.transport']
+        transport_var_obj = self.env['flydoc.transport.var']
 
         updated_transportids = []
-        for service in self.browse(cr, uid, ids, context=context):
+        for service in self:
             domain = [
                 ('service_ids', '=', service.id),
                 ('transportid', 'not in', updated_transportids),
@@ -204,24 +201,24 @@ class FlyDocService(orm.Model):
             ]
             if trans_ids:
                 domain.append(('id', 'in', trans_ids))
-            transport_ids = transport_obj.search(cr, uid, domain, context=context)
+            transports = transport_obj.search(domain)
 
             # Open a connection to the FlyDoc webservices
             connection = FlyDoc()
-            connection.login(service.username, service.password)
+            connection.login(self.username, self.password)
 
             # Update all found transports
-            for transport in transport_obj.browse(cr, uid, transport_ids, context=context):
+            for transport in transport_obj.browse(transports):
                 updated_transportids.append(transport.transportid)
                 try:
                     flydocTransport = connection.browse(filter='msn=%d' % transport.transportid).next()
                 except StopIteration:
                     # Transport has been deleted
-                    transport.unlink(context=context)
+                    transport.unlink()
                     continue
 
                 # Update the transport values
-                transport.write({'name': flydocTransport.transportName, 'state': str(flydocTransport.state)}, context=context)
+                transport.write({'name': flydocTransport.transportName, 'state': str(flydocTransport.state)})
 
                 # Update the transport vars
                 for transport_var in flydocTransport.vars.Var:
@@ -233,11 +230,11 @@ class FlyDocService(orm.Model):
                     }
 
                     # Update each var of this transport
-                    transport_var_ids = transport_var_obj.search(cr, uid, [('transport_id', '=', transport.id), ('name', '=', transport_var.attribute)], context=context)
-                    if not transport_var_ids:
-                        transport_var_obj.create(cr, uid, var_values, context=context)
+                    transport_vars = transport_var_obj.search([('transport_id', '=', transport.id), ('name', '=', transport_var.attribute)])
+                    if not transport_vars:
+                        transport_var_obj.create(var_values)
                     else:
-                        transport_var_obj.write(cr, uid, transport_var_ids, var_values, context=context)
+                        transport_vars.write(var_values)
 
             # Close the connection
             try:
@@ -248,53 +245,50 @@ class FlyDocService(orm.Model):
         return True
 
 
-class FlyDocTransport(orm.Model):
+class FlyDocTransport(models.Model):
     _name = 'flydoc.transport'
     _description = 'FlyDoc Transport'
 
-    def _getTransportNames(self, cr, uid, context=None):
+    @api.model
+    def _getTransportNames(self):
         return [(name.name, name.value) for name in FlyDocTransportName]
 
-    def _getTransportStates(self, cr, uid, context=None):
+    @api.model
+    def _getTransportStates(self):
         return [(str(state.value), state.name) for state in FlyDocTransportState]
 
-    _columns = {
-        'service_ids': fields.many2many('flydoc.service', string='Services', readonly=True, help='Services from which this transport is available'),
-        'transportid': fields.integer('Transport ID', required=True, readonly=True, help='Identifier of this transport at FlyDoc'),
-        'state': fields.selection(_getTransportStates, 'State', readonly=True, help='State of this transport'),
-        'name': fields.selection(_getTransportNames, 'Transport Name', readonly=True, help='Name of the transport'),
-        'var_ids': fields.one2many('flydoc.transport.var', 'transport_id', 'Vars', readonly=True, help='Vars of this transport'),
-        'attachment_ids': fields.one2many('flydoc.transport.attachment', 'transport_id', 'Attachments', readonly=True, help='Attachments of this transport'),
-    }
+    service_ids = fields.Many2many(comodel_name='flydoc.service', string='Services', readonly=True, help='Services from which this transport is available')
+    transportid = fields.Integer(string='Transport ID', required=True, readonly=True, help='Identifier of this transport at FlyDoc')
+    state = fields.Selection(selection=_getTransportStates, string='State', readonly=True, help='State of this transport')
+    name = fields.Selection(selection=_getTransportNames, string='Transport Name', readonly=True, help='Name of the transport')
+    var_ids = fields.One2many(comodel_name='flydoc.transport.var', inverse_name='transport_id', string='Vars', readonly=True, help='Vars of this transport')
+    attachment_ids = fields.One2many(comodel_name='flydoc.transport.attachment', inverse_name='transport_id', string='Attachments', readonly=True, help='Attachments of this transport')
 
     _sql_constraints = [
         ('transportid_unique', 'UNIQUE (transportid)', 'The transportID of the FlyDoc transport must be unique !'),
     ]
 
 
-class FlyDocTransportVar(orm.Model):
+class FlyDocTransportVar(models.Model):
     _name = 'flydoc.transport.var'
     _description = 'FlyDoc Transport Var'
 
-    def _getTransportVarTypes(self, cr, uid, context=None):
+    @api.model
+    def _getTransportVarTypes(self):
         return [(typeCode, typeName) for typeName, typeCode in FlyDocSubmissionService().VAR_TYPE]
 
-    _columns = {
-        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, ondelete='cascade', help='Transport of this var'),
-        'name': fields.char('Name', size=64, required=True, help='Name of the var'),
-        'value': fields.char('Value', size=64, help='Value of the var'),
-        'type': fields.selection(_getTransportVarTypes, 'Type', help='Type of the var'),
-    }
+    transport_id = fields.Many2one(comodel_name='flydoc.transport', string='Transport', required=True, ondelete='cascade', help='Transport of this var')
+    name = fields.Char(string='Name', size=64, required=True, help='Name of the var')
+    value = fields.Char(string='Value', size=64, help='Value of the var')
+    type = fields.Selection(selection=_getTransportVarTypes, string='Type', help='Type of the var')
 
 
-class FlyDocTransportAttachment(orm.Model):
+class FlyDocTransportAttachment(models.Model):
     _name = 'flydoc.transport.attachment'
     _description = 'FlyDoc Transport Attachment'
 
-    _columns = {
-        'transport_id': fields.many2one('flydoc.transport', 'Transport', required=True, ondelete='cascade', help='Transport of this attachment'),
-        'filename': fields.char('Filename', size=64, required=True, help='Name of the attached file'),
-        'data': fields.binary('Data', required=True, help='Contents of the attached file'),
-    }
+    transport_id = fields.Many2one(comodel_name='flydoc.transport', string='Transport', required=True, ondelete='cascade', help='Transport of this attachment')
+    filename = fields.Char(string='Filename', size=64, required=True, help='Name of the attached file')
+    data = fields.Binary(string='Data', required=True, help='Contents of the attached file')
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
