@@ -24,9 +24,7 @@
         #
         ##############################################################################
 
-        <!-- Create the Tools menu, if it doesn't exist -->
-        <menuitem name="Tools" id="base.menu_tools" sequence="120" groups="base.group_tool_user"/>
-        <menuitem name="FlyDoc" id="menu_flydoc_root" sequence="100" parent="base.menu_tools"/>
+        <menuitem name="FlyDoc" id="menu_flydoc_root" sequence="100" parent="base.menu_administration"/>
 
         <record id="view_flydoc_service_tree" model="ir.ui.view">
             <field name="name">flydoc.service.tree</field>
